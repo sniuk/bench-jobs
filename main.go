@@ -102,6 +102,8 @@ func runCommand(wg *sync.WaitGroup, job JobCommand) {
 		updateStateAndTimeOfJob(db, job, 0)
 	}
 
+	checksJobs(job)
+
 }
 func main() {
 
@@ -119,12 +121,11 @@ func main() {
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(10)
 
-	rows, err := db.Query("SELECT * FROM queue_cmd WHERE status = 0")
+	rows, err := db.Query("SELECT * FROM queue_cmd WHERE status = 0 LIMIT 4")
 	if err != nil {
 		panic(err.Error())
 	}
 
-	jobs := []JobCommand{}
 	var wg sync.WaitGroup
 	for rows.Next() {
 		var r JobCommand
@@ -139,7 +140,7 @@ func main() {
 			fmt.Println("Last_execution:", r.Last_execution)
 			fmt.Println("nextTime:", nextTime)
 			fmt.Println("TimeNow:", time.Now().UTC())
-			jobs = append(jobs, r)
+
 			wg.Add(1)
 			go runCommand(&wg, r)
 		}
@@ -147,9 +148,5 @@ func main() {
 	}
 
 	wg.Wait()
-	for i, job := range jobs {
-		println("Checking job :", i)
-		checksJobs(job)
 
-	}
 }
